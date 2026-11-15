@@ -120,7 +120,9 @@
     "test:host": "node scripts/test-host.js",
     "package": "npm run check && npm test && node scripts/package.js",
     "package:verify": "node scripts/verify-package.js",
-    "test:package": "node scripts/test-host.js --package"
+    "test:package": "node scripts/test-host.js --package",
+    "publish:marketplace": "node scripts/publish.js marketplace",
+    "publish:openvsx": "node scripts/publish.js openvsx"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
