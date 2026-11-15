@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }}, VS Code ${{ matrix.vscode-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        vscode-version: ['1.80.0', stable]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Type checks, lint, unit tests, build, and package verification.
+      - run: npm run package
+
+      - name: Test packaged extension (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:package
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode-version }}
+
+      - name: Test packaged extension
+        if: runner.os != 'Linux'
+        run: npm run test:package
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode-version }}
