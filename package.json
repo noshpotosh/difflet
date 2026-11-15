@@ -117,7 +117,10 @@
   "scripts": {
     "check": "tsc --noEmit && eslint .",
     "test": "node --test test/*.test.js",
-    "test:host": "node scripts/test-host.js"
+    "test:host": "node scripts/test-host.js",
+    "package": "npm run check && npm test && node scripts/package.js",
+    "package:verify": "node scripts/verify-package.js",
+    "test:package": "node scripts/test-host.js --package"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
