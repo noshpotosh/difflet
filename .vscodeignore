@@ -1,0 +1,9 @@
+# Package only the runtime files. scripts/verify-package.js asserts the exact contents.
+**
+!package.json
+!src/**/*.js
+!LICENSE
+!README.md
+!CHANGELOG.md
+!media/icon.png
+!media/screenshot*.png

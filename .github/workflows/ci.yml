@@ -28,19 +28,17 @@ jobs:
 
       - run: npm ci
 
-      # Type checks, lint, and unit tests.
-      - run: npm run check
+      # Type checks, lint, unit tests, build, and package verification.
+      - run: npm run package
 
-      - run: npm test
-
-      - name: Test source extension (Linux)
+      - name: Test packaged extension (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:host
+        run: xvfb-run -a npm run test:package
         env:
           VSCODE_VERSION: ${{ matrix.vscode-version }}
 
-      - name: Test source extension
+      - name: Test packaged extension
         if: runner.os != 'Linux'
-        run: npm run test:host
+        run: npm run test:package
         env:
           VSCODE_VERSION: ${{ matrix.vscode-version }}
