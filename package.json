@@ -28,9 +28,95 @@
     "insertions",
     "deletions"
   ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./src/extension.js",
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitWorkingTreeStats.refresh",
+        "title": "Difflet: Refresh"
+      },
+      {
+        "command": "gitWorkingTreeStats.showOutput",
+        "title": "Difflet: Show Output"
+      }
+    ],
+    "configuration": {
+      "title": "Difflet",
+      "properties": {
+        "gitWorkingTreeStats.alignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "default": "right",
+          "description": "Side of the status bar for both indicators. Changes apply without reloading.",
+          "scope": "window"
+        },
+        "gitWorkingTreeStats.priority": {
+          "type": "number",
+          "default": 1000000,
+          "description": "Position within the chosen side. Higher values place the indicators farther left. Other extensions affect the exact position. Deletions use this priority minus one.",
+          "scope": "window"
+        },
+        "gitWorkingTreeStats.includeUntracked": {
+          "type": "boolean",
+          "default": true,
+          "description": "Count untracked files as added lines.",
+          "scope": "resource"
+        },
+        "gitWorkingTreeStats.addedColor": {
+          "type": "string",
+          "default": "",
+          "description": "Color of the added-lines indicator in the status bar. Leave empty to use the theme foreground.",
+          "scope": "resource",
+          "pattern": "^(|#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$"
+        },
+        "gitWorkingTreeStats.removedColor": {
+          "type": "string",
+          "default": "",
+          "description": "Color of the removed-lines indicator in the status bar. Leave empty to use the theme foreground.",
+          "scope": "resource",
+          "pattern": "^(|#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$"
+        },
+        "gitWorkingTreeStats.addedPrefix": {
+          "type": "string",
+          "default": "",
+          "description": "Optional label shown before the added-lines indicator. A space is inserted after the label.",
+          "scope": "resource"
+        },
+        "gitWorkingTreeStats.removedPrefix": {
+          "type": "string",
+          "default": "",
+          "description": "Optional label shown before the removed-lines indicator. A space is inserted after the label.",
+          "scope": "resource"
+        }
+      }
+    }
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Git statistics run local Git processes and read repository files."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "A filesystem-backed Git repository is required."
+    }
+  },
   "scripts": {
     "check": "tsc --noEmit && eslint .",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:host": "node scripts/test-host.js"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

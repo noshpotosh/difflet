@@ -32,3 +32,15 @@ jobs:
       - run: npm run check
 
       - run: npm test
+
+      - name: Test source extension (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:host
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode-version }}
+
+      - name: Test source extension
+        if: runner.os != 'Linux'
+        run: npm run test:host
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode-version }}
