@@ -8,7 +8,9 @@ const DEFAULT_VSCODE_VERSION = 'stable';
 
 /** Run source or packaged extension tests in an isolated workspace, then remove it. */
 async function runHostTests() {
-  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'git-stats-host-'));
+  // Git resolves symlinks, so VS Code must open the same canonical workspace path.
+  const temporaryDirectory = await fs.realpath(os.tmpdir());
+  const temporaryRoot = await fs.mkdtemp(path.join(temporaryDirectory, 'git-stats-host-'));
 
   try {
     const workspacePath = path.join(temporaryRoot, 'workspace');
