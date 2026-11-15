@@ -10,6 +10,7 @@ const { parseNumstat, runGit } = git;
 const { readUntracked, MAX_UNTRACKED_BYTES } = files;
 const { countLines } = require('../src/core/stats');
 const { createCollectStats, mapLimit } = require('../src/core/collectStats');
+const { formatTooltipMarkdown, escapeMarkdown, formatPrefix, validateColor, shouldShowStats } = require('../src/presentation/formatting');
 
 const collectStats = createCollectStats({ git, files });
 const BINARY_EXCLUSION = 'binary files';
@@ -35,6 +36,43 @@ test('line counting handles empty, CRLF, no trailing newline and binaries', () =
   }
 });
 
+test('presentation is deterministic, escaped, theme-aware and limited', () => {
+  const records = Array.from({ length: 22 }, (_, index) =>
+    `1\t0\tfile${String(21 - index).padStart(2, '0')}\0`
+  );
+  const stats = parseNumstat(records.join(''));
+  const tooltip = formatTooltipMarkdown('[command](command:evil)', stats);
+  assert.ok(tooltip.includes('\\[command\\]\\(command:evil\\)'));
+  assert.ok(tooltip.includes('file00'));
+  assert.ok(tooltip.includes('file01'));
+  assert.ok(tooltip.indexOf('file00') < tooltip.indexOf('file01'));
+  assert.equal((tooltip.match(/`\+1 −0`/g) || []).length, 20);
+  assert.ok(!tooltip.includes('file20'));
+  assert.match(tooltip, /2 more files/);
+
+  const rankedTooltip = formatTooltipMarkdown('repo', {
+    ...stats,
+    files: [
+      { path: 'small-change', added: 1, deleted: 0 },
+      { path: 'large-deletion', added: 0, deleted: 10 }
+    ]
+  });
+  assert.ok(rankedTooltip.indexOf('large-deletion') < rankedTooltip.indexOf('small-change'));
+
+  assert.equal(escapeMarkdown('a\nb\tc'), 'a\\nb\\tc');
+
+  assert.equal(formatPrefix(' x '), 'x ');
+  assert.equal(formatPrefix(42), '');
+  assert.ok(!formatPrefix('$(zap)').includes('$('));
+
+  assert.equal(validateColor(''), undefined);
+  assert.equal(validateColor('red'), undefined);
+  assert.equal(validateColor('#abc'), '#abc');
+
+  assert.equal(shouldShowStats(parseNumstat('')), false);
+  assert.equal(shouldShowStats(parseNumstat('-\t-\tbinary\0')), true);
+});
+
 test('unborn repository counts staged contents once plus untracked', async (testContext) => {
   const repository = await createRepositoryFixture(testContext);
   await repository.writeFile('staged', 'one\ntwo\n');
@@ -57,13 +95,13 @@ test('net counts cancel staged changes, ignore ignored files, count deletions', 
   repository.runGit('add', 'file');
   await repository.writeFile('file', 'original\n');
   await repository.writeFile('ignored', 'not counted\n');
-  assert.deepEqual((await repository.collectStats()).files, []);
+  assert.equal(shouldShowStats(await repository.collectStats()), false);
 
   await fs.unlink(path.join(repository.root, 'file'));
   assert.equal((await repository.collectStats()).deleted, 1);
 });
 
-test('renames preserve destination paths and zero-line records', async (testContext) => {
+test('renames preserve destination paths and zero-line changes remain visible', async (testContext) => {
   const repository = await createRepositoryFixture(testContext);
   await repository.writeFile('old', 'one\ntwo\nthree\n');
   repository.commitAll();
@@ -74,6 +112,7 @@ test('renames preserve destination paths and zero-line records', async (testCont
   assert.equal(result.added, 0);
   assert.equal(result.deleted, 0);
   assert.equal(result.files[0].path, 'new ü [name]');
+  assert.equal(shouldShowStats(result), true);
 });
 
 test('unusual tracked filenames round-trip through Git', { skip: process.platform === 'win32' }, async (testContext) => {
@@ -108,6 +147,7 @@ test('binary files, oversized files and symlinks disclose exclusions', async (te
   if (process.platform !== 'win32') {
     assert.equal(result.excluded.symlinks, 1);
   }
+  assert.match(formatTooltipMarkdown('repo', result), /Partial totals/);
   assert.deepEqual(await readUntracked(repository.root, 'absent'), { reason: 'unreadable files' });
 });
 
