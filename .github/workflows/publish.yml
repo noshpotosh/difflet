@@ -1,0 +1,64 @@
+name: Publish Marketplace
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha256:
+        description: SHA-256 of the already-verified release VSIX
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-marketplace
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Locate the versioned release artifact
+        run: |
+          node -e 'const p = require("./scripts/package-config"); console.log("RELEASE_TAG=v" + p.PACKAGE_VERSION); console.log("VSIX_NAME=" + p.PACKAGE_FILENAME); console.log("VSIX_PATH=" + p.PACKAGE_PATH)' >> "$GITHUB_ENV"
+
+      - name: Download the existing VSIX without rebuilding
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release download "$RELEASE_TAG" --pattern "$VSIX_NAME" --dir dist
+
+      - name: Verify the expected artifact checksum
+        env:
+          EXPECTED_SHA256: ${{ inputs.sha256 }}
+        run: |
+          node -e 'const fs = require("node:fs"); const crypto = require("node:crypto"); const expected = process.env.EXPECTED_SHA256; if (!/^[a-f0-9]{64}$/.test(expected)) throw new Error("Expected a lowercase SHA-256 digest"); const actual = crypto.createHash("sha256").update(fs.readFileSync(process.env.VSIX_PATH)).digest("hex"); if (actual !== expected) throw new Error("VSIX checksum mismatch"); console.log("Verified SHA-256: " + actual);'
+
+      - run: npm run check
+      - run: npm test
+      - run: npm run package:verify
+
+      - name: Test the exact package on minimum supported VS Code
+        run: xvfb-run -a npm run test:package
+        env:
+          VSCODE_VERSION: '1.80.0'
+
+      - name: Publish the verified package with OIDC
+        run: npm run publish:marketplace -- --oidc
