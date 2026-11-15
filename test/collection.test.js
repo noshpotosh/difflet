@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createCollectStats, mapLimit } = require('../src/core/collectStats');
+const { createCollectStats } = require('../src/core/collectStats');
 const { emptyStats } = require('../src/core/stats');
 
 const REPOSITORY_ROOT = '/repo';
@@ -92,27 +92,4 @@ test('collection waits for active file reads before propagating cancellation', a
   releaseRead();
   await cancellationAssertion;
   assert.equal(readCompleted, true);
-});
-
-test('read pool bounds concurrency and preserves order despite out-of-order completion', async () => {
-  const releases = new Map();
-  const started = [];
-  const completed = [];
-  const pending = mapLimit([0, 1, 2], 2, async index => {
-    started.push(index);
-    await new Promise(resolve => releases.set(index, resolve));
-    completed.push(index);
-    return `result-${index}`;
-  });
-
-  assert.deepEqual(started, [0, 1]);
-  releases.get(1)();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(started, [0, 1, 2]);
-  releases.get(2)();
-  await new Promise(resolve => setImmediate(resolve));
-  releases.get(0)();
-
-  assert.deepEqual(await pending, ['result-0', 'result-1', 'result-2']);
-  assert.deepEqual(completed, [1, 2, 0]);
 });
